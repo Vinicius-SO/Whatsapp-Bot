@@ -1,7 +1,7 @@
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const cron = require('node-cron');
-
+const express = require('express');
 
 // equivalent to:
 const client = new Client({
@@ -122,3 +122,30 @@ const groupID = async () => {
       console.log(`Nome do Grupo: ${grupo.name}, ID: ${grupo.id._serialized}`);
   });
 };
+
+
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Rota para verificar o status do bot
+app.get('/', (req, res) => {
+    res.send('O bot do WhatsApp está rodando!');
+});
+
+// Adiciona mais informações sobre o status do cliente
+app.get('/status', (req, res) => {
+    if (client.info) {
+        res.json({
+            status: 'Bot está pronto',
+            info: client.info
+        });
+    } else {
+        res.json({ status: 'Bot ainda não está pronto' });
+    }
+});
+
+// Inicia o servidor Express
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
