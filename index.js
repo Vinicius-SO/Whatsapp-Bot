@@ -3,6 +3,10 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const cron = require('node-cron');
 const express = require('express');
 
+let isMsgPullCanceled = false 
+let valorSolana = 950
+
+
 // equivalent to:
 const client = new Client({
   authStrategy: new LocalAuth({
@@ -20,7 +24,7 @@ client.on('ready', () => {
   console.log('Cliente pronto!');
 
   // Agendando a tarefa para rodar a cada 30 segundos
-  cron.schedule('*/10 * * * * *', async() => {
+  cron.schedule('* * * * *', async() => {
     const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=SOLBRL')
     const brutePrice = await json.json()
     const formattedPrice = parseFloat(brutePrice.price).toFixed(0);
@@ -32,11 +36,12 @@ client.on('ready', () => {
       maximumFractionDigits: 2
     }).format(formattedPrice);
 
+    console.log(formattedPrice, valorSolana)
 
-    if(formattedPrice < 770){
+    if(formattedPrice < valorSolana && isMsgPullCanceled == false){
 
       const grupo = '120363332673166670@g.us'
-      const mensagem = 'O preço da solana está abaixo, o atual preço é  ' + price;
+      const mensagem = 'Sol abaixo de ' + valorSolana;
 
       // Enviar a mensagem
       client.sendMessage(grupo, mensagem)
@@ -46,15 +51,20 @@ client.on('ready', () => {
           .catch(err => {
               console.error('Erro ao enviar a mensagem: ', err);
           });
+      }else if(formattedPrice < (valorSolana + 5) && isMsgPullCanceled == false) {
+
       }
   });
 });
+
+
 client.on('message_create', async (message) => {
 
   const chatData = await message.getChat()
   if(chatData.groupMetadata){
+
     if(chatData.groupMetadata.id._serialized == '120363332673166670@g.us'){
-      if (message.body.toLowerCase().startsWith('b')) {
+      if (message.body.toLowerCase() === 'b') {
         const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=BTCBRL')
         const brutePrice = await json.json()
         const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
@@ -66,12 +76,12 @@ client.on('message_create', async (message) => {
           maximumFractionDigits: 2
         }).format(formattedPrice);
   
-        message.reply(`O valor do bitcoin está em ${price}`);
+        message.reply(`Bitcoin ${price}`);
        
         // console.log(chatData.groupChat.groupMetadata.id._serialized)
       }
   
-      if (message.body.toLowerCase().startsWith('s')) { 
+      if (message.body.toLowerCase() === 's') { 
         const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=SOLBRL')
         const brutePrice = await json.json()
         const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
@@ -81,11 +91,11 @@ client.on('message_create', async (message) => {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }).format(formattedPrice);
-        message.reply(`O valor da solana está em ${price}`);
-        // const chatData = await message.getChat()
-        // console.log(chatData.groupChat.groupMetadata.id._serialized)
+        message.reply(`Solana ${price}`);
+      
       }
-      if (message.body.toLowerCase().startsWith('e')) {
+
+      if (message.body.toLowerCase() === 'e') {
         const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=ETHBRL')
         const brutePrice = await json.json()
         const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
@@ -97,13 +107,22 @@ client.on('message_create', async (message) => {
           maximumFractionDigits: 2
         }).format(formattedPrice);
   
-        message.reply(`O valor do Ethereum está em ${price}`);
-        // const chatData = await message.getChat()
-        // console.log(chatData.groupChat.groupMetadata.id._serialized)
+        message.reply(`Ethereum ${price}`);
       }
-    }
-  }
    
+      if (message.body.toLowerCase().startsWith('def sol')) {
+        let msg = message.body.toLowerCase();
+        infosArray = msg.split(/(\s+)/).filter( e => e.trim().length > 0)
+
+        valorSolana = infosArray[2]
+
+        message.reply(`Alerta de sol ${valorSolana}`);
+      }
+      
+      
+   
+    }
+  }  
 });
 
 client.initialize();
@@ -144,6 +163,7 @@ app.get('/status', (req, res) => {
         res.json({ status: 'Bot ainda não está pronto' });
     }
 });
+//
 
 // Inicia o servidor Express
 app.listen(PORT, () => {
