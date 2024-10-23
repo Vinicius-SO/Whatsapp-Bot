@@ -1,10 +1,19 @@
 import qrcode from "qrcode-terminal"
 import cron from 'node-cron'
 import express from 'express'
-import {Client, LocalAuth} from'./src/model/index.js'
+import {Client, LocalAuth} from'./src/common/index.js'
+import { Crypto } from './src/model/Crypto.js'
+// import {runMongo} from './src/model/mongo.js'
 
-let isMsgPullCanceled = false 
+let pullMessage = true
 let valorSolana = 950
+
+const Bitcoin = new Crypto('Bitcoin', 'BTC')
+const Solana = new Crypto('Solana', 'SOL')
+const Ethereum = new Crypto('Ethereum', 'BTC')
+
+
+// runMongo()
 
 
 // equivalent to:
@@ -24,36 +33,31 @@ client.on('ready', () => {
   console.log('Cliente pronto!');
 
   // Agendando a tarefa para rodar a cada 30 segundos
-  cron.schedule('* * * * *', async() => {
-    const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=SOLBRL')
-    const brutePrice = await json.json()
-    const formattedPrice = parseFloat(brutePrice.price).toFixed(0);
-
-    const price = new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(formattedPrice);
-
+  cron.schedule(' * * * * *', async() => {
+    const formattedPrice = await Solana.fetchPrice()
     console.log(formattedPrice, valorSolana)
 
-    if(formattedPrice < valorSolana && isMsgPullCanceled == false){
+    if(formattedPrice < valorSolana){
+      if(pullMessage === true){
+        const grupo = '120363332673166670@g.us'
+        const mensagem = 'Sol abaixo de ' + valorSolana;
 
-      const grupo = '120363332673166670@g.us'
-      const mensagem = 'Sol abaixo de ' + valorSolana;
-
-      // Enviar a mensagem
-      client.sendMessage(grupo, mensagem)
-          .then(response => {
-              console.log('Mensagem enviada com sucesso!');
-          })
-          .catch(err => {
-              console.error('Erro ao enviar a mensagem: ', err);
-          });
-      }else if(formattedPrice < (valorSolana + 5) && isMsgPullCanceled == false) {
-
+        // Enviar a mensagem
+        client.sendMessage(grupo, mensagem)
+            .then(response => {
+                console.log('Mensagem enviada com sucesso!');
+            })
+            .catch(err => {
+                console.error('Erro ao enviar a mensagem: ', err);
+            });
       }
+      const restartValue = valorSolana+ 5
+      if(formattedPrice > restartValue){
+        pullMessage = true
+        console.log("ok")
+      }
+      
+    }
   });
 });
 
@@ -61,66 +65,47 @@ client.on('ready', () => {
 client.on('message_create', async (message) => {
 
   const chatData = await message.getChat()
+
   if(chatData.groupMetadata){
 
     if(chatData.groupMetadata.id._serialized == '120363332673166670@g.us'){
+
+      const msg = message.body.toLowerCase();
+      const infosArray = msg.split(/(\s+)/).filter( e => e.trim().length > 0)
+
+
       if (message.body.toLowerCase() === 'b') {
-        const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=BTCBRL')
-        const brutePrice = await json.json()
-        const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
-        //com R$
-        const price = new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }).format(formattedPrice);
-  
+        const price = await Bitcoin.getPrice() 
         message.reply(`Bitcoin ${price}`);
-       
-        // console.log(chatData.groupChat.groupMetadata.id._serialized)
       }
   
       if (message.body.toLowerCase() === 's') { 
-        const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=SOLBRL')
-        const brutePrice = await json.json()
-        const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
-        const price = new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }).format(formattedPrice);
+        const price = await Solana.getPrice()
         message.reply(`Solana ${price}`);
-      
       }
 
       if (message.body.toLowerCase() === 'e') {
-        const json = await fetch('https://api.binance.com/api/v3/avgPrice?symbol=ETHBRL')
-        const brutePrice = await json.json()
-        const formattedPrice = parseFloat(brutePrice.price).toFixed(2);
-        
-        const price = new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }).format(formattedPrice);
-  
+        const price = await Ethereum.getPrice()
         message.reply(`Ethereum ${price}`);
       }
-   
-      if (message.body.toLowerCase().startsWith('def sol')) {
-        let msg = message.body.toLowerCase();
-        infosArray = msg.split(/(\s+)/).filter( e => e.trim().length > 0)
 
-        valorSolana = infosArray[2]
 
+
+      //Define preço Solana
+      if (infosArray[0].toLowerCase() === 'sol' && infosArray.length === 2) {
+        valorSolana = infosArray[1]
         message.reply(`Alerta de sol ${valorSolana}`);
       }
-      
-      
-   
+
+      if (message.body.toLowerCase() === 'stop') {
+        pullMessage = false
+        console.log(`Alerta de sol pausado`);
+      }
+
+      if (message.body.toLowerCase() === 'start') {
+        pullMessage = true
+        console.log(`Alerta de sol`);
+      }
     }
   }  
 });
