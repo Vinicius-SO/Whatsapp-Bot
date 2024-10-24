@@ -1,1 +1,10 @@
 node_modules
+.git
+.wwebjs_auth
+.wwebjs_cache
+npm-debug.log
+.git
+.DS_Store
+*.log
+*.tmp
+.persist-data

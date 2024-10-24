@@ -1,3 +1,5 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
-module.exports = { Client, LocalAuth };
+module.exports = { Client,
+  LocalAuth,
+};

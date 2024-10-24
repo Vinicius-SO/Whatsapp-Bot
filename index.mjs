@@ -3,7 +3,7 @@ import cron from 'node-cron'
 import express from 'express'
 import {Client, LocalAuth} from'./src/common/index.js'
 import { Crypto } from './src/model/Crypto.js'
-// import {runMongo} from './src/model/mongo.js'
+
 
 let pullMessage = true
 let valorSolana = 950
@@ -13,16 +13,12 @@ const Solana = new Crypto('Solana', 'SOL')
 const Ethereum = new Crypto('Ethereum', 'BTC')
 
 
-// runMongo()
-
-
-// equivalent to:
 const client = new Client({
   authStrategy: new LocalAuth({
-    clientId: "bot-session",
-    dataPath: "./persist-data",  // Local onde os dados de sessão serão salvos
+      dataPath: './persist-data'
   })
 });
+
 client.on('qr', (qr) => {
   console.log(qr)
     qrcode.generate(qr, { small: true });
@@ -130,7 +126,7 @@ const groupID = async () => {
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Rota para verificar o status do bot
 app.get('/', (req, res) => {
